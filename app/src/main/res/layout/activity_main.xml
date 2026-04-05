@@ -85,7 +85,7 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_weight="1"
-                    android:text="Upload HTML"
+                    android:text="Upload HTML / DOCX"
                     android:textColor="@color/bg_dark"
                     android:backgroundTint="@color/accent"
                     android:textStyle="bold"
@@ -215,7 +215,17 @@
                 android:clipToOutline="true"
                 android:layout_marginBottom="16dp">
 
-                <WebView
+                <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:visibility="gone"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:indeterminate="true"
+            android:progressTint="#F0A500"
+            android:layout_marginBottom="4dp"/>
+
+        <WebView
                     android:id="@+id/webPreview"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"/>
