@@ -1,0 +1,9 @@
+এই ফোল্ডারে নিচের TTF ফাইলগুলো রাখো:
+
+- SolaimanLipi.ttf
+- Kalpurush.ttf
+- HindSiliguri-Regular.ttf
+- Amiri-Regular.ttf
+- NotoNaskhArabic-Regular.ttf
+
+Download links: README.md দেখো।

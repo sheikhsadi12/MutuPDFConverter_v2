@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    activity_main.xml
+    Premium dark-theme layout for Mutu PDF Converter
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_dark"
+    android:padding="0dp">
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- TOP APP BAR                                    -->
+    <!-- ══════════════════════════════════════════════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:background="@color/surface"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:elevation="4dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="✦ Mutu PDF"
+            android:textColor="@color/accent"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="serif"/>
+
+        <!-- Export hint badge -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="v1.0"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:background="@drawable/badge_bg"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"/>
+    </LinearLayout>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SCROLLABLE CONTENT                             -->
+    <!-- ══════════════════════════════════════════════ -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:background="@color/bg_dark">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- ── FILE SECTION ─────────────────────────────── -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📂  ফাইল"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:letterSpacing="0.15"
+                android:layout_marginBottom="6dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Button
+                    android:id="@+id/btnUpload"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="Upload HTML"
+                    android:textColor="@color/bg_dark"
+                    android:backgroundTint="@color/accent"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:stateListAnimator="@null"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tvFileName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="কোনো ফাইল নেই"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:ellipsize="end"
+                    android:maxLines="2"/>
+            </LinearLayout>
+
+            <!-- ── DIVIDER ────────────────────────────────────── -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- ── FONT SECTION ──────────────────────────────── -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔤  ফন্ট নির্বাচন"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:letterSpacing="0.15"
+                android:layout_marginBottom="10dp"/>
+
+            <!-- Bangla Font -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="বাংলা ফন্ট"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:layout_marginBottom="4dp"/>
+
+            <Spinner
+                android:id="@+id/spBangla"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/spinner_bg"
+                android:popupBackground="@color/surface"
+                android:layout_marginBottom="12dp"
+                android:paddingStart="12dp"/>
+
+            <!-- Arabic Font -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Arabic / আরবি ফন্ট"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:layout_marginBottom="4dp"/>
+
+            <Spinner
+                android:id="@+id/spArabic"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/spinner_bg"
+                android:popupBackground="@color/surface"
+                android:layout_marginBottom="12dp"
+                android:paddingStart="12dp"/>
+
+            <!-- English Font -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="English ফন্ট"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:layout_marginBottom="4dp"/>
+
+            <Spinner
+                android:id="@+id/spEnglish"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/spinner_bg"
+                android:popupBackground="@color/surface"
+                android:layout_marginBottom="12dp"
+                android:paddingStart="12dp"/>
+
+            <!-- Custom Font Upload -->
+            <Button
+                android:id="@+id/btnUploadFont"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="+ কাস্টম ফন্ট আপলোড (.ttf/.otf)"
+                android:textColor="@color/accent"
+                android:backgroundTint="@color/surface_variant"
+                android:textSize="13sp"
+                android:stateListAnimator="@null"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- ── DIVIDER ────────────────────────────────────── -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- ── PREVIEW SECTION ───────────────────────────── -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="👀  প্রিভিউ"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:letterSpacing="0.15"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- WebView card -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="320dp"
+                android:background="@drawable/card_bg"
+                android:clipToOutline="true"
+                android:layout_marginBottom="16dp">
+
+                <WebView
+                    android:id="@+id/webPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"/>
+            </FrameLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- STICKY BOTTOM: CONVERT BUTTON                  -->
+    <!-- ══════════════════════════════════════════════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface"
+        android:padding="12dp"
+        android:elevation="8dp">
+
+        <Button
+            android:id="@+id/btnConvert"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="🔥  Convert to PDF"
+            android:textColor="@color/bg_dark"
+            android:backgroundTint="@color/accent"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:stateListAnimator="@null"/>
+    </LinearLayout>
+
+</LinearLayout>
