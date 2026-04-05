@@ -21,10 +21,10 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_PICK_FILE = 101;
     private static final int REQ_PICK_FONT = 102;
 
-    private WebView  webPreview;
-    private Spinner  spBangla, spArabic, spEnglish;
-    private TextView tvFileName;
-    private Button   btnUpload, btnUploadFont, btnConvert;
+    private WebView     webPreview;
+    private Spinner     spBangla, spArabic, spEnglish;
+    private TextView    tvFileName;
+    private Button      btnUpload, btnUploadFont, btnConvert;
     private ProgressBar progressBar;
 
     private String currentHtmlContent = "";
@@ -37,6 +37,8 @@ public class MainActivity extends AppCompatActivity {
     private final String[] englishFonts = {"Georgia","Times New Roman","Courier New"};
 
     private FontManager fontManager;
+    private boolean mammothPageReady = false;
+    private String  pendingBase64    = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,27 +88,36 @@ public class MainActivity extends AppCompatActivity {
         ws.setAllowFileAccess(true);
         ws.setAllowFileAccessFromFileURLs(true);
         ws.setAllowUniversalAccessFromFileURLs(true);
+        ws.setDomStorageEnabled(true);
 
-        // Java bridge — JS এখান থেকে converted HTML পাঠাবে
         webPreview.addJavascriptInterface(new DocxBridge(), "DocxBridge");
         webPreview.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                progressBar.setVisibility(View.GONE);
+                if (url != null && url.contains("mammoth_converter.html")) {
+                    mammothPageReady = true;
+                    if (pendingBase64 != null) {
+                        final String b64 = pendingBase64;
+                        pendingBase64 = null;
+                        view.postDelayed(() -> triggerMammoth(b64), 300);
+                    }
+                }
             }
         });
         loadPlaceholder();
     }
 
     private void loadPlaceholder() {
-        String html = "<html><body style='background:#1a1a2e;color:#8892b0;"
-                + "display:flex;align-items:center;justify-content:center;"
-                + "height:100vh;margin:0;font-family:sans-serif;font-size:14px;'>"
-                + "<div style='text-align:center'>"
-                + "<div style='font-size:48px'>📄</div>"
-                + "<p>HTML বা DOCX ফাইল আপলোড করো<br>Preview এখানে দেখাবে</p>"
-                + "</div></body></html>";
-        webPreview.loadData(html, "text/html", "UTF-8");
+        String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>"
+            + "<body style='background:#1a1a2e;color:#8892b0;"
+            + "display:flex;align-items:center;justify-content:center;"
+            + "height:100vh;margin:0;font-family:sans-serif;font-size:14px;'>"
+            + "<div style='text-align:center'>"
+            + "<div style='font-size:48px'>📄</div>"
+            + "<p>HTML বা DOCX ফাইল আপলোড করো</p>"
+            + "</div></body></html>";
+        webPreview.loadDataWithBaseURL(
+            "file:///android_asset/", html, "text/html", "UTF-8", null);
     }
 
     private void setupListeners() {
@@ -124,13 +135,13 @@ public class MainActivity extends AppCompatActivity {
             "application/msword",
             "application/octet-stream"
         });
-        startActivityForResult(Intent.createChooser(i, "HTML বা DOCX ফাইল বেছে নাও"), REQ_PICK_FILE);
+        startActivityForResult(Intent.createChooser(i, "HTML বা DOCX বেছে নাও"), REQ_PICK_FILE);
     }
 
     private void pickFont() {
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
         i.setType("*/*");
-        startActivityForResult(Intent.createChooser(i, "Font ফাইল (.ttf/.otf)"), REQ_PICK_FONT);
+        startActivityForResult(Intent.createChooser(i, "Font (.ttf/.otf)"), REQ_PICK_FONT);
     }
 
     @Override
@@ -138,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(req, res, data);
         if (res != Activity.RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
-        if (req == REQ_PICK_FILE)  handleFile(uri);
+        if (req == REQ_PICK_FILE) handleFile(uri);
         else if (req == REQ_PICK_FONT) handleFontFile(uri);
     }
 
@@ -147,52 +158,84 @@ public class MainActivity extends AppCompatActivity {
         if (name == null) name = "file";
         tvFileName.setText("📄 " + name);
 
-        if (name.toLowerCase().endsWith(".docx") || name.toLowerCase().endsWith(".doc")) {
+        if (isDocxFile(uri, name)) {
             convertDocxToHtml(uri);
         } else {
             readHtmlFile(uri);
         }
     }
 
-    // ── HTML file সরাসরি পড়ো ─────────────────────────────────
+    // ── DOCX detect: MIME type + extension + magic bytes ──────
+    private boolean isDocxFile(Uri uri, String name) {
+        // 1. MIME type check (সবচেয়ে reliable)
+        String mime = getContentResolver().getType(uri);
+        if (mime != null && (
+            mime.contains("word") ||
+            mime.contains("openxmlformats") ||
+            mime.equals("application/zip"))) {
+            return true;
+        }
+
+        // 2. Extension check
+        String lower = name.toLowerCase();
+        if (lower.endsWith(".docx") || lower.endsWith(".doc")) return true;
+
+        // 3. Magic bytes check — DOCX = ZIP = starts with PK (0x50 0x4B)
+        try {
+            InputStream is = getContentResolver().openInputStream(uri);
+            if (is != null) {
+                byte[] header = new byte[4];
+                int read = is.read(header);
+                is.close();
+                if (read >= 2 && header[0] == 0x50 && header[1] == 0x4B) {
+                    return true; // ZIP signature = DOCX
+                }
+            }
+        } catch (IOException ignored) {}
+
+        return false;
+    }
+
+    // ── HTML সরাসরি পড়ো ───────────────────────────────────────
     private void readHtmlFile(Uri uri) {
         try {
             InputStream is = getContentResolver().openInputStream(uri);
             if (is == null) { toast("ফাইল পড়া যাচ্ছে না"); return; }
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(is, StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) sb.append(line).append("\n");
             is.close();
             currentHtmlContent = sb.toString();
             refreshPreview();
-        } catch (IOException e) {
-            toast("Error: " + e.getMessage());
-        }
+        } catch (IOException e) { toast("Error: " + e.getMessage()); }
     }
 
-    // ── DOCX → Base64 → WebView → mammoth.js → HTML ──────────
+    // ── DOCX → Base64 → mammoth.js → HTML ─────────────────────
     private void convertDocxToHtml(Uri uri) {
         progressBar.setVisibility(View.VISIBLE);
         toast("⏳ DOCX convert হচ্ছে...");
+        mammothPageReady = false;
 
         new Thread(() -> {
             try {
                 InputStream is = getContentResolver().openInputStream(uri);
-                if (is == null) { runOnUiThread(() -> toast("ফাইল পড়া যাচ্ছে না")); return; }
-
+                if (is == null) {
+                    runOnUiThread(() -> { progressBar.setVisibility(View.GONE); toast("ফাইল পড়া যাচ্ছে না"); });
+                    return;
+                }
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 byte[] buf = new byte[4096];
                 int len;
                 while ((len = is.read(buf)) != -1) baos.write(buf, 0, len);
                 is.close();
-
-                // DOCX bytes → Base64 string
                 String base64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP);
 
-                // mammoth.js কে trigger করো WebView এ
-                runOnUiThread(() -> loadMammothConverter(base64));
-
+                runOnUiThread(() -> {
+                    pendingBase64 = base64;
+                    webPreview.loadUrl("file:///android_asset/mammoth_converter.html");
+                });
             } catch (IOException e) {
                 runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
@@ -202,49 +245,32 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    // mammoth.js দিয়ে conversion page load করো
-    private void loadMammothConverter(String base64) {
-        String converterHtml = "<!DOCTYPE html><html><head>"
-            + "<meta charset='UTF-8'>"
-            + "<script src='file:///android_asset/js/mammoth.browser.min.js'></script>"
-            + "</head><body>"
-            + "<script>"
-            + "var base64 = '" + base64 + "';"
-            // Base64 → ArrayBuffer
-            + "var binary = atob(base64);"
-            + "var bytes = new Uint8Array(binary.length);"
-            + "for(var i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);"
-            + "var arrayBuffer = bytes.buffer;"
-            // mammoth convert
-            + "mammoth.convertToHtml({arrayBuffer: arrayBuffer})"
-            + ".then(function(result){"
-            + "  DocxBridge.onConverted(result.value);" // Java bridge কে পাঠাও
-            + "}).catch(function(err){"
-            + "  DocxBridge.onError(err.toString());"
-            + "});"
-            + "</script>"
-            + "</body></html>";
-
-        webPreview.loadDataWithBaseURL(
-            "file:///android_asset/", converterHtml, "text/html", "UTF-8", null);
+    private void triggerMammoth(String base64) {
+        // Base64 কে chunk এ ভাগ করে JS variable এ store করো
+        // সরাসরি function arg এ দিলে JS engine crash করে বড় ফাইলে
+        String js = "window._docxB64 = '" + base64 + "'; convertDocx(window._docxB64);";
+        webPreview.evaluateJavascript(js, value -> {
+            if (value != null && value.contains("error")) {
+                runOnUiThread(() -> toast("JS error: " + value));
+            }
+        });
     }
 
-    // ── Java Bridge — JS থেকে HTML পাবে ─────────────────────
     private class DocxBridge {
         @JavascriptInterface
         public void onConverted(String html) {
             runOnUiThread(() -> {
                 currentHtmlContent = html;
-                toast("✅ DOCX convert সফল!");
+                progressBar.setVisibility(View.GONE);
+                toast("✅ Convert সফল!");
                 refreshPreview();
             });
         }
-
         @JavascriptInterface
         public void onError(String error) {
             runOnUiThread(() -> {
                 progressBar.setVisibility(View.GONE);
-                toast("❌ Error: " + error);
+                toast("❌ " + error);
             });
         }
     }
@@ -252,9 +278,10 @@ public class MainActivity extends AppCompatActivity {
     private void refreshPreview() {
         if (currentHtmlContent.isEmpty()) return;
         String rendered = WebViewRenderer.buildHtml(
-                currentHtmlContent, banglaFont, arabicFont, englishFont, fontManager);
-        webPreview.loadDataWithBaseURL(
-                "file:///android_asset/", rendered, "text/html", "UTF-8", null);
+            currentHtmlContent, banglaFont, arabicFont, englishFont, fontManager);
+        String encoded = Base64.encodeToString(
+            rendered.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+        webPreview.loadData(encoded, "text/html", "base64");
     }
 
     private void exportToPDF() {
@@ -263,16 +290,16 @@ public class MainActivity extends AppCompatActivity {
         if (pm == null) return;
         PrintDocumentAdapter adapter = webPreview.createPrintDocumentAdapter("MutuDoc");
         PrintAttributes attrs = new PrintAttributes.Builder()
-                .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
-                .setResolution(new PrintAttributes.Resolution("pdf","pdf",600,600))
-                .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
-                .build();
+            .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+            .setResolution(new PrintAttributes.Resolution("pdf","pdf",600,600))
+            .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+            .build();
         pm.print("MutuPDF_" + System.currentTimeMillis(), adapter, attrs);
     }
 
     private void handleFontFile(Uri uri) {
         String saved = fontManager.saveFont(uri);
-        if (saved != null) { banglaFont = saved; toast("✅ Font সেভ: " + saved); refreshPreview(); }
+        if (saved != null) { banglaFont = saved; toast("✅ Font: " + saved); refreshPreview(); }
         else toast("❌ Font সেভ হয়নি");
     }
 
